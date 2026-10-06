@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/activity_provider.dart';
 import '../providers/goal_provider.dart';
+import '../providers/realtime_tracker_provider.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 import 'goals_screen.dart';
@@ -9,48 +10,13 @@ import 'goals_screen.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  void _showEditNameDialog(BuildContext context, GoalProvider goalProv) {
-    final controller = TextEditingController(text: goalProv.userName);
+  void _confirmClearData(BuildContext context, ActivityProvider activityProv, RealtimeTrackerProvider trackerProv) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Your Name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'Enter your name',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                await goalProv.updateUserName(newName);
-              }
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmClearData(BuildContext context, ActivityProvider activityProv) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Clear All Activities?'),
+        title: const Text('Clear All Device Activities?'),
         content: const Text(
-          'This will permanently delete all logged workouts from your local SQLite database. This action cannot be undone.',
+          'This will permanently delete all recorded activities and sensor history from this phone. This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -64,11 +30,12 @@ class ProfileScreen extends StatelessWidget {
             ),
             onPressed: () async {
               await activityProv.clearAllData();
+              await trackerProv.resetTodayLiveStats();
               if (ctx.mounted) {
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('All activities cleared.'),
+                    content: Text('All activities cleared from this device.'),
                     backgroundColor: AppTheme.errorColor,
                   ),
                 );
@@ -85,18 +52,21 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final goalProv = Provider.of<GoalProvider>(context);
     final activityProv = Provider.of<ActivityProvider>(context);
+    final trackerProv = Provider.of<RealtimeTrackerProvider>(context);
     final goal = goalProv.goal;
     final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Profile & Settings'),
+        title: const Text('Device & Settings'),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           children: [
+            // Device Information Header Card
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -116,22 +86,19 @@ class ProfileScreen extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          color: AppTheme.primaryLight,
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: AppTheme.primaryColor,
-                            width: 2.5,
+                            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                            width: 1.5,
                           ),
                         ),
-                        child: const CircleAvatar(
-                          radius: 32,
-                          backgroundColor: AppTheme.primaryLight,
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 40,
-                            color: AppTheme.primaryDark,
-                          ),
+                        child: const Icon(
+                          Icons.phone_android_rounded,
+                          size: 36,
+                          color: AppTheme.primaryDark,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -140,46 +107,26 @@ class ProfileScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              goalProv.userName,
+                              'Device Tracker',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryLight,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'Fitness Explorer',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.primaryDark,
-                                ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Activities belong to this phone',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Edit Name',
-                        icon: const Icon(
-                          Icons.edit_outlined,
-                          color: AppTheme.textSecondary,
-                        ),
-                        onPressed: () =>
-                            _showEditNameDialog(context, goalProv),
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   const Divider(color: AppTheme.dividerColor, height: 1),
                   const SizedBox(height: 16),
                   Row(
@@ -190,24 +137,16 @@ class ProfileScreen extends StatelessWidget {
                         activityProv.totalLifetimeWorkouts.toString(),
                         AppTheme.primaryColor,
                       ),
-                      Container(
-                        height: 30,
-                        width: 1,
-                        color: AppTheme.dividerColor,
-                      ),
+                      Container(height: 30, width: 1, color: AppTheme.dividerColor),
                       _buildLifetimeStat(
                         'Total kcal',
                         activityProv.totalLifetimeCalories.toInt().toString(),
                         AppTheme.accentOrange,
                       ),
-                      Container(
-                        height: 30,
-                        width: 1,
-                        color: AppTheme.dividerColor,
-                      ),
+                      Container(height: 30, width: 1, color: AppTheme.dividerColor),
                       _buildLifetimeStat(
                         'Total Steps',
-                        activityProv.totalLifetimeSteps.toString(),
+                        (activityProv.totalLifetimeSteps + trackerProv.todayLiveSteps).toString(),
                         AppTheme.secondaryColor,
                       ),
                     ],
@@ -218,6 +157,68 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
+            // Hardware Sensors & Diagnostics Card
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Phone Sensors & GPS',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildSensorRow(
+                    title: 'Hardware Step Counter',
+                    status: trackerProv.isStepSensorActive ? 'Active' : (trackerProv.hasActivityPermission ? 'Listening' : 'Needs Permission'),
+                    isActive: trackerProv.isStepSensorActive || trackerProv.hasActivityPermission,
+                    icon: Icons.directions_walk_rounded,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildSensorRow(
+                    title: 'GPS Location Tracking',
+                    status: trackerProv.isGpsActive ? 'Active' : (trackerProv.hasLocationPermission ? 'Ready' : 'Needs Permission'),
+                    isActive: trackerProv.isGpsActive || trackerProv.hasLocationPermission,
+                    icon: Icons.gps_fixed_rounded,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildSensorRow(
+                    title: 'Local SQLite Database',
+                    status: 'Connected',
+                    isActive: true,
+                    icon: Icons.storage_rounded,
+                  ),
+                  if (!trackerProv.hasPermissions) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () => trackerProv.requestPermissions(),
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                        label: const Text('Grant Sensor Permissions'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Daily Goals for Device
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -232,7 +233,7 @@ class ProfileScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Daily Goals',
+                        'Device Daily Targets',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,
@@ -252,39 +253,20 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildGoalRow(
-                    'Steps',
-                    '${goal.steps} steps',
-                    Icons.directions_walk_rounded,
-                    AppTheme.primaryColor,
-                  ),
+                  _buildGoalRow('Steps', '${goal.steps} steps', Icons.directions_walk_rounded, AppTheme.primaryColor),
                   const SizedBox(height: 10),
-                  _buildGoalRow(
-                    'Calories',
-                    '${goal.calories.toInt()} kcal',
-                    Icons.local_fire_department_rounded,
-                    AppTheme.accentOrange,
-                  ),
+                  _buildGoalRow('Calories', '${goal.calories.toInt()} kcal', Icons.local_fire_department_rounded, AppTheme.accentOrange),
                   const SizedBox(height: 10),
-                  _buildGoalRow(
-                    'Workout',
-                    '${goal.workoutMinutes} min',
-                    Icons.timer_rounded,
-                    AppTheme.secondaryColor,
-                  ),
+                  _buildGoalRow('Workout', '${goal.workoutMinutes} min', Icons.timer_rounded, AppTheme.secondaryColor),
                   const SizedBox(height: 10),
-                  _buildGoalRow(
-                    'Distance',
-                    '${goal.distance.toStringAsFixed(1)} km',
-                    Icons.place_rounded,
-                    AppTheme.accentPurple,
-                  ),
+                  _buildGoalRow('Distance', '${goal.distance.toStringAsFixed(1)} km', Icons.place_rounded, AppTheme.accentPurple),
                 ],
               ),
             ),
 
             const SizedBox(height: 20),
 
+            // Data Management
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -310,7 +292,7 @@ class ProfileScreen extends StatelessWidget {
                       'Load Sample Activities',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    subtitle: const Text('Seed 7 days of realistic workouts for testing'),
+                    subtitle: const Text('Seed 7 days of realistic workouts on this device'),
                     trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                     onTap: () async {
                       await activityProv.seedSampleData();
@@ -338,15 +320,15 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     title: const Text(
-                      'Clear All Activities',
+                      'Clear Device Activities',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: AppTheme.errorColor,
                       ),
                     ),
-                    subtitle: const Text('Delete all local SQLite activity records'),
+                    subtitle: const Text('Permanently erase all activity records on this phone'),
                     trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                    onTap: () => _confirmClearData(context, activityProv),
+                    onTap: () => _confirmClearData(context, activityProv, trackerProv),
                   ),
                 ],
               ),
@@ -354,6 +336,7 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
+            // App Details
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -403,29 +386,11 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'FitTrack is an offline-first fitness tracking mobile application with local SQLite database storage, dynamic daily progress monitoring, weekly activity analytics using interactive charts, and customizable daily fitness targets.',
+                    'FitTrack runs locally on this device. Anyone carrying this phone can track real-time footsteps, GPS distance, and manage activities without creating an account or personal user profile.',
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.45,
                       color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Built with Flutter, Material 3, SQLite & Provider',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textSecondary,
-                      ),
                     ),
                   ),
                 ],
@@ -436,6 +401,37 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSensorRow({
+    required String title,
+    required String status,
+    required bool isActive,
+    required IconData icon,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: isActive ? AppTheme.primaryColor : AppTheme.textSecondary),
+        const SizedBox(width: 10),
+        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isActive ? AppTheme.primaryLight : const Color(0xFFEEEEEE),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isActive ? AppTheme.primaryDark : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -463,12 +459,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGoalRow(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildGoalRow(String title, String value, IconData icon, Color color) {
     return Row(
       children: [
         Icon(icon, size: 18, color: color),

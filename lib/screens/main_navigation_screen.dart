@@ -26,7 +26,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final screens = [
       DashboardScreen(
         onNavigateToHistory: () => _onTabSelected(1),
-        onNavigateToProfile: () => _onTabSelected(3),
+        onNavigateToSettings: () => _onTabSelected(3),
       ),
       const ActivityHistoryScreen(),
       const StatisticsScreen(),
@@ -61,9 +61,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             label: 'Stats',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded, color: AppTheme.primaryDark),
-            label: 'Profile',
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings_rounded, color: AppTheme.primaryDark),
+            label: 'Device',
           ),
         ],
       ),

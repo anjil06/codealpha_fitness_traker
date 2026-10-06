@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'providers/activity_provider.dart';
 import 'providers/goal_provider.dart';
+import 'providers/realtime_tracker_provider.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_theme.dart';
 import 'utils/constants.dart';
@@ -30,6 +31,7 @@ class FitTrackApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ActivityProvider()),
         ChangeNotifierProvider(create: (_) => GoalProvider()),
+        ChangeNotifierProvider(create: (_) => RealtimeTrackerProvider()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,

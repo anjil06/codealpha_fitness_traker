@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:fittrack/models/activity.dart';
 import 'package:fittrack/models/fitness_goal.dart';
+import 'package:fittrack/providers/activity_provider.dart';
+import 'package:fittrack/providers/realtime_tracker_provider.dart';
+import 'package:fittrack/screens/live_workout_screen.dart';
 import 'package:fittrack/services/fitness_service.dart';
 import 'package:fittrack/widgets/summary_card.dart';
 import 'package:fittrack/widgets/progress_card.dart';
@@ -131,5 +135,30 @@ void main() {
       expect(find.text('Workout'), findsOneWidget);
       expect(find.text('Distance'), findsOneWidget);
     });
+
+    testWidgets('LiveWorkoutScreen renders initial UI components', (tester) async {
+      final activityProvider = ActivityProvider();
+      final trackerProvider = RealtimeTrackerProvider(autoInit: false);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: activityProvider),
+            ChangeNotifierProvider.value(value: trackerProvider),
+          ],
+          child: const MaterialApp(
+            home: LiveWorkoutScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Live Activity Tracker'), findsOneWidget);
+      expect(find.text('Select Activity Type'), findsOneWidget);
+      expect(find.text('Walking'), findsOneWidget);
+      expect(find.text('Running'), findsOneWidget);
+      expect(find.text('Start Tracking Walking'), findsOneWidget);
+      expect(find.text('DISTANCE TRAVELED'), findsOneWidget);
+    });
   });
 }
+
