@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppConstants {
   static const String appName = 'FitTrack';
   static const String appTagline = 'Track. Move. Improve.';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.0.2';
 
   // Shared Preferences keys
   static const String keyUserName = 'user_name';

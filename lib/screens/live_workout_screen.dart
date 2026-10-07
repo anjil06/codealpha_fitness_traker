@@ -16,7 +16,7 @@ class LiveWorkoutScreen extends StatefulWidget {
   State<LiveWorkoutScreen> createState() => _LiveWorkoutScreenState();
 }
 
-class _LiveWorkoutScreenState extends State<LiveWorkoutScreen> {
+class _LiveWorkoutScreenState extends State<LiveWorkoutScreen> with WidgetsBindingObserver {
   late String _selectedType;
   final List<Map<String, dynamic>> _activities = [
     {'name': 'Walking', 'icon': Icons.directions_walk_rounded, 'color': AppTheme.primaryColor},
@@ -28,7 +28,26 @@ class _LiveWorkoutScreenState extends State<LiveWorkoutScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedType = widget.initialActivityType;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<RealtimeTrackerProvider>(context, listen: false).checkPermissions();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      Provider.of<RealtimeTrackerProvider>(context, listen: false).checkPermissions();
+    }
   }
 
   void _confirmFinish(BuildContext context, RealtimeTrackerProvider trackerProv, ActivityProvider activityProv) {
@@ -201,7 +220,7 @@ class _LiveWorkoutScreenState extends State<LiveWorkoutScreen> {
 
               const SizedBox(height: 16),
 
-              if (!trackerProv.hasPermissions)
+              if (!trackerProv.hasPermissions || !trackerProv.isLocationServiceEnabled)
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(14),
@@ -212,17 +231,39 @@ class _LiveWorkoutScreenState extends State<LiveWorkoutScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: AppTheme.accentOrange),
+                      Icon(
+                        !trackerProv.isLocationServiceEnabled && trackerProv.hasLocationPermission
+                            ? Icons.location_off_rounded
+                            : Icons.warning_amber_rounded,
+                        color: AppTheme.accentOrange,
+                      ),
                       const SizedBox(width: 10),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Permissions required for step counter and GPS tracking while moving.',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                          !trackerProv.isLocationServiceEnabled && trackerProv.hasLocationPermission
+                              ? 'Device GPS is turned off in Android settings. Turn on GPS to track routes.'
+                              : (trackerProv.isPermanentlyDenied
+                                  ? 'Sensors or GPS blocked in settings. Tap Settings to allow.'
+                                  : 'Permissions required for step counter and GPS tracking while moving.'),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
                         ),
                       ),
                       TextButton(
-                        onPressed: () => trackerProv.requestPermissions(),
-                        child: const Text('Grant', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentOrange)),
+                        onPressed: () {
+                          if (!trackerProv.isLocationServiceEnabled && trackerProv.hasLocationPermission) {
+                            trackerProv.openLocationSettings();
+                          } else if (trackerProv.isPermanentlyDenied) {
+                            trackerProv.openSettings();
+                          } else {
+                            trackerProv.requestPermissions();
+                          }
+                        },
+                        child: Text(
+                          !trackerProv.isLocationServiceEnabled && trackerProv.hasLocationPermission
+                              ? 'Turn On'
+                              : (trackerProv.isPermanentlyDenied ? 'Settings' : 'Grant'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentOrange),
+                        ),
                       ),
                     ],
                   ),

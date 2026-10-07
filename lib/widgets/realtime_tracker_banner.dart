@@ -118,7 +118,10 @@ class RealtimeTrackerBanner extends StatelessWidget {
       );
     }
 
-    if (!trackerProv.hasPermissions) {
+    if (!trackerProv.hasPermissions || !trackerProv.isLocationServiceEnabled) {
+      final isPermanentlyDenied = trackerProv.isPermanentlyDenied;
+      final isGpsDisabled = trackerProv.hasLocationPermission && !trackerProv.isLocationServiceEnabled;
+
       return Container(
         margin: const EdgeInsets.only(bottom: 20),
         padding: const EdgeInsets.all(16),
@@ -135,25 +138,35 @@ class RealtimeTrackerBanner extends StatelessWidget {
                 color: Color(0xFFFFECB3),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.directions_walk_rounded, color: Color(0xFFF57F17), size: 22),
+              child: Icon(
+                isGpsDisabled ? Icons.location_off_rounded : Icons.directions_walk_rounded,
+                color: const Color(0xFFF57F17),
+                size: 22,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Real-Time Sensors Inactive',
-                    style: TextStyle(
+                  Text(
+                    isGpsDisabled
+                        ? 'Device GPS is Turned Off'
+                        : (isPermanentlyDenied ? 'Permission Blocked in Settings' : 'Sensors & GPS Inactive'),
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                       color: Color(0xFFE65100),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
-                    'Grant step counter and GPS permissions to count steps and track distance.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF5D4037)),
+                  Text(
+                    isGpsDisabled
+                        ? 'Turn on device location in Android settings to track distance.'
+                        : (isPermanentlyDenied
+                            ? 'Tap to open Settings and allow Physical Activity & Location.'
+                            : 'Enable step counter and GPS permissions to track motion.'),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF5D4037)),
                   ),
                 ],
               ),
@@ -166,8 +179,19 @@ class RealtimeTrackerBanner extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: () => trackerProv.requestPermissions(),
-              child: const Text('Enable', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              onPressed: () {
+                if (isGpsDisabled) {
+                  trackerProv.openLocationSettings();
+                } else if (isPermanentlyDenied) {
+                  trackerProv.openSettings();
+                } else {
+                  trackerProv.requestPermissions();
+                }
+              },
+              child: Text(
+                isGpsDisabled ? 'Turn On GPS' : (isPermanentlyDenied ? 'Settings' : 'Enable'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
             ),
           ],
         ),

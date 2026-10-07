@@ -6,6 +6,7 @@ import 'package:fittrack/models/fitness_goal.dart';
 import 'package:fittrack/providers/activity_provider.dart';
 import 'package:fittrack/providers/realtime_tracker_provider.dart';
 import 'package:fittrack/screens/live_workout_screen.dart';
+import 'package:fittrack/services/app_update_service.dart';
 import 'package:fittrack/services/fitness_service.dart';
 import 'package:fittrack/widgets/summary_card.dart';
 import 'package:fittrack/widgets/progress_card.dart';
@@ -82,6 +83,17 @@ void main() {
 
       final walkingCalories = FitnessService.estimateCalories('Walking', 20);
       expect(walkingCalories, 90.0);
+    });
+
+    test('AppUpdateService semantic version comparison', () {
+      expect(AppUpdateService.isNewerVersion('1.0.2', '1.0.1'), isTrue);
+      expect(AppUpdateService.isNewerVersion('v1.0.2', '1.0.0'), isTrue);
+      expect(AppUpdateService.isNewerVersion('1.1.0', '1.0.9'), isTrue);
+      expect(AppUpdateService.isNewerVersion('2.0.0', '1.9.9'), isTrue);
+
+      expect(AppUpdateService.isNewerVersion('1.0.1', '1.0.2'), isFalse);
+      expect(AppUpdateService.isNewerVersion('1.0.0', '1.0.0'), isFalse);
+      expect(AppUpdateService.isNewerVersion('v1.0.2', '1.0.2'), isFalse);
     });
   });
 

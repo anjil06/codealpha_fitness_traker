@@ -5,6 +5,7 @@ import '../providers/goal_provider.dart';
 import '../providers/realtime_tracker_provider.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
+import '../services/app_update_service.dart';
 import 'goals_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -196,7 +197,7 @@ class ProfileScreen extends StatelessWidget {
                     isActive: true,
                     icon: Icons.storage_rounded,
                   ),
-                  if (!trackerProv.hasPermissions) ...[
+                  if (!trackerProv.hasPermissions || !trackerProv.isLocationServiceEnabled) ...[
                     const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
@@ -206,9 +207,28 @@ class ProfileScreen extends StatelessWidget {
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: () => trackerProv.requestPermissions(),
-                        icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
-                        label: const Text('Grant Sensor Permissions'),
+                        onPressed: () {
+                          if (!trackerProv.isLocationServiceEnabled && trackerProv.hasLocationPermission) {
+                            trackerProv.openLocationSettings();
+                          } else if (trackerProv.isPermanentlyDenied) {
+                            trackerProv.openSettings();
+                          } else {
+                            trackerProv.requestPermissions();
+                          }
+                        },
+                        icon: Icon(
+                          trackerProv.isPermanentlyDenied
+                              ? Icons.settings_rounded
+                              : Icons.check_circle_outline_rounded,
+                          size: 20,
+                        ),
+                        label: Text(
+                          !trackerProv.isLocationServiceEnabled && trackerProv.hasLocationPermission
+                              ? 'Turn On Location (GPS)'
+                              : (trackerProv.isPermanentlyDenied
+                                  ? 'Open Settings to Allow Permissions'
+                                  : 'Grant Sensor & GPS Permissions'),
+                        ),
                       ),
                     ),
                   ],
@@ -391,6 +411,28 @@ class ProfileScreen extends StatelessWidget {
                       fontSize: 13,
                       height: 1.45,
                       color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(color: AppTheme.dividerColor),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                        side: const BorderSide(color: AppTheme.primaryColor),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () {
+                        AppUpdateService.promptUpdateIfAvailable(context, showNoUpdateMessage: true);
+                      },
+                      icon: const Icon(Icons.system_update_rounded, size: 20),
+                      label: const Text(
+                        'Check for App Updates',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],

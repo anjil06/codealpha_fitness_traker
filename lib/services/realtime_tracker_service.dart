@@ -23,6 +23,8 @@ class RealtimeTrackerService {
   bool _isGpsAvailable = false;
   bool _hasActivityPermission = false;
   bool _hasLocationPermission = false;
+  bool _isPermanentlyDenied = false;
+  bool _isLocationServiceEnabled = true;
 
   // Daily Live Metrics
   int _todayLiveSteps = 0;
@@ -46,6 +48,8 @@ class RealtimeTrackerService {
   bool get isGpsAvailable => _isGpsAvailable;
   bool get hasActivityPermission => _hasActivityPermission;
   bool get hasLocationPermission => _hasLocationPermission;
+  bool get isPermanentlyDenied => _isPermanentlyDenied;
+  bool get isLocationServiceEnabled => _isLocationServiceEnabled;
   int get todayLiveSteps => _todayLiveSteps;
   double get todayLiveDistanceKm => _todayLiveDistanceMeters / 1000.0;
   double get currentSpeedKmh => _currentSpeedKmh;
@@ -75,6 +79,10 @@ class RealtimeTrackerService {
 
       final locationStatus = await Permission.locationWhenInUse.status;
       _hasLocationPermission = locationStatus.isGranted;
+
+      _isPermanentlyDenied = activityStatus.isPermanentlyDenied || locationStatus.isPermanentlyDenied;
+      _isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      onMetricsUpdated?.call();
     } catch (e) {
       debugPrint('Error checking permissions: $e');
     }
@@ -82,11 +90,24 @@ class RealtimeTrackerService {
 
   Future<bool> requestPermissions() async {
     try {
+      // If permanently denied by OS, direct the user to device Settings
+      if (_isPermanentlyDenied) {
+        await openAppSettings();
+        return false;
+      }
+
       final activityResult = await Permission.activityRecognition.request();
       _hasActivityPermission = activityResult.isGranted;
 
       final locationResult = await Permission.locationWhenInUse.request();
       _hasLocationPermission = locationResult.isGranted;
+
+      _isPermanentlyDenied = activityResult.isPermanentlyDenied || locationResult.isPermanentlyDenied;
+      _isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!_isLocationServiceEnabled && _hasLocationPermission) {
+        await Geolocator.openLocationSettings();
+      }
 
       if (_hasActivityPermission) {
         _startStepCounter();
@@ -101,6 +122,14 @@ class RealtimeTrackerService {
       debugPrint('Error requesting permissions: $e');
       return false;
     }
+  }
+
+  Future<bool> openSettings() async {
+    return await openAppSettings();
+  }
+
+  Future<bool> openLocationSettings() async {
+    return await Geolocator.openLocationSettings();
   }
 
   void _startStepCounter() {

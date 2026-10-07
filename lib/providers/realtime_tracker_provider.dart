@@ -47,6 +47,8 @@ class RealtimeTrackerProvider with ChangeNotifier {
   bool get hasPermissions => _service.hasActivityPermission && _service.hasLocationPermission;
   bool get hasActivityPermission => _service.hasActivityPermission;
   bool get hasLocationPermission => _service.hasLocationPermission;
+  bool get isPermanentlyDenied => _service.isPermanentlyDenied;
+  bool get isLocationServiceEnabled => _service.isLocationServiceEnabled;
   bool get isStepSensorActive => _service.isStepCounterAvailable;
   bool get isGpsActive => _service.isGpsAvailable;
 
@@ -70,10 +72,27 @@ class RealtimeTrackerProvider with ChangeNotifier {
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
+  Future<void> checkPermissions() async {
+    await _service.checkPermissions();
+    notifyListeners();
+  }
+
   Future<bool> requestPermissions() async {
     final granted = await _service.requestPermissions();
     notifyListeners();
     return granted;
+  }
+
+  Future<bool> openSettings() async {
+    final result = await _service.openSettings();
+    await checkPermissions();
+    return result;
+  }
+
+  Future<bool> openLocationSettings() async {
+    final result = await _service.openLocationSettings();
+    await checkPermissions();
+    return result;
   }
 
   Future<void> startSession(String activityType) async {
